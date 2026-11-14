@@ -70,7 +70,7 @@ function snap() { undoSnap = JSON.stringify(S); }
 // ---------- 従業員（スマホ） ----------
 function empView() {
   if (!S.me) return regView();
-  const tabs = `<nav class="tabbar"><button class="tab ${view !== 'mine' ? 'on' : ''}" data-act="go" data-v="scan">📷 QRを読む</button><button class="tab ${view === 'mine' ? 'on' : ''}" data-act="go" data-v="mine">🎒 自分の持ち物</button></nav>`;
+  const tabs = `<nav class="tabbar"><button class="tab ${view !== 'mine' ? 'on' : ''}" data-act="go" data-v="scan"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>QRを読む</button><button class="tab ${view === 'mine' ? 'on' : ''}" data-act="go" data-v="mine"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="8" width="14" height="12" rx="3"/><path d="M9 8V6a3 3 0 0 1 6 0v2M9 13h6"/></svg>自分の持ち物</button></nav>`;
   let body;
   if (view === 'tool') body = toolView();
   else if (view === 'mine') body = mineView();
@@ -126,7 +126,7 @@ function sumView() {
   const od = S.loans.filter(l => !l.ret && stateOf(tool(l.tool)) === 'overdue');
   const rows = od.map(l => `<tr><td>${esc(tool(l.tool).name)}<div class="sub">${esc(l.tool)}</div></td><td>${esc(person(l.person).name)}</td><td>${esc(l.site)}</td><td class="late">${daysLate(l)}日遅れ</td></tr>`).join('');
   return `<div class="tiles">${tile('in_stock')}${tile('out')}${tile('overdue', (c.overdue || 0) ? 'alert' : '')}${tile('repair')}</div>
-    <div class="card"><h3>返却が遅れている工具</h3>${rows ? `<div class="scroll"><table><tr><th>工具</th><th>持っている人</th><th>現場</th><th>遅れ</th></tr>${rows}</table></div><p class="sub">本物では、持っている人に毎朝メールで返却をお願いします。</p>` : '<p class="sub">遅れている工具はありません 🎉</p>'}</div>
+    <div class="card"><h3>返却が遅れている工具</h3>${rows ? `<div class="scroll"><table><tr><th>工具</th><th>持っている人</th><th>現場</th><th>遅れ</th></tr>${rows}</table></div><p class="sub">本物では、持っている人に毎朝メールで返却をお願いします。</p>` : '<p class="sub">遅れている工具はありません</p>'}</div>
     <div class="card"><h3>月に1回の「持っていますか？」確認</h3><p class="sub">本物では、持ち出し中の人にメールで確認します。答えがない工具や「持っていない」と答えた工具が、ここに一覧で出ます。（デモでは未実装）</p></div>`;
 }
 function holdersView() {
@@ -192,29 +192,29 @@ document.addEventListener('click', e => {
     const site = val('f-site').trim(); if (!site) { toast('現場・用途を入れてください', false); return; }
     if (openLoan(cur)) return; // 二重タップ対策
     snap(); S.loans.push({ id: Date.now(), tool: cur, person: S.me, site, at: new Date().toISOString(), due: dueFor(val('f-due')), ret: null });
-    view = 'mine'; commit('✓ 借りました：' + tool(cur).name);
+    view = 'mine'; commit('借りました：' + tool(cur).name);
   }
   else if (a === 'return') {
     const l = openLoan(cur); if (!l) return; snap(); l.ret = new Date().toISOString(); l.retBy = S.me;
     if (b.dataset.c === 'defect') tool(cur).status = 'repair';
-    view = 'scan'; commit('✓ 返しました：' + tool(cur).name + (b.dataset.c === 'defect' ? '（修理中にしました）' : ''));
+    view = 'scan'; commit('返しました：' + tool(cur).name + (b.dataset.c === 'defect' ? '（修理中にしました）' : ''));
   }
   else if (a === 'transfer') {
     const l = openLoan(cur), site = val('f-site').trim() || l.site; if (!l) return; snap(); l.ret = new Date().toISOString(); l.retBy = S.me;
     S.loans.push({ id: Date.now(), tool: cur, person: S.me, site, at: new Date().toISOString(), due: dueFor('today'), ret: null });
-    view = 'mine'; commit('✓ 引き継ぎました：' + tool(cur).name);
+    view = 'mine'; commit('引き継ぎました：' + tool(cur).name);
   }
   else if (a === 'addtool') {
     const name = val('n-name').trim(); if (!name) { toast('名前を入れてください', false); return; }
     snap(); const id = nextId(); S.tools.push({ id, name, cat: val('n-cat') || 'その他', status: 'ok' });
-    commit('✓ 追加しました：' + id + ' ' + name + '（QRシール画面で印刷できます）');
+    commit('追加しました：' + id + ' ' + name + '（QRシール画面で印刷できます）');
   }
   else if (a === 'bulk') {
     const lines = val('bulk').split('\n').map(s => s.trim()).filter(Boolean).slice(0, 500);
     if (!lines.length) { toast('貼り付ける内容がありません', false); return; }
     snap(); let n = 0;
     lines.forEach(line => { const [name, cat] = line.split(/[,\t]/).map(s => s.trim()); if (!name) return; S.tools.push({ id: nextId(), name, cat: CATS.includes(cat) ? cat : 'その他', status: 'ok' }); n++; });
-    commit('✓ ' + n + '点を登録しました');
+    commit('' + n + '点を登録しました');
   }
   else if (a === 'undo') { if (undoSnap) { S = JSON.parse(undoSnap); undoSnap = null; save(); document.getElementById('toast').hidden = true; render(); } }
 });

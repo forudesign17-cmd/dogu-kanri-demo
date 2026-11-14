@@ -55,6 +55,10 @@ td{padding:10px 8px;border-top:1px solid var(--line)}
 .big{font-size:24px;font-weight:800}
 .note{background:#fff8e8;border-radius:12px;padding:10px 12px;color:#8a5200;font-size:13px;margin-bottom:12px}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1d1d1f;color:#fff;border-radius:14px;padding:10px 14px;display:flex;gap:14px;align-items:center;z-index:20;max-width:92vw}
+.two{display:grid;grid-template-columns:2fr 1fr;gap:10px}
+textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:16px}
+textarea:focus{outline:none;border-color:var(--main);box-shadow:0 0 0 3px rgba(0,113,227,.15)}
+@media(max-width:560px){.two{grid-template-columns:1fr}}
 #toast{width:max-content}
 #toast button{white-space:nowrap;background:none;border:0;color:#7fb8ff;cursor:pointer;font-weight:700}
 @media(max-width:760px){body{font-size:15px}.top{padding:10px 12px}.brand{font-size:15px}}

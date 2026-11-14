@@ -134,9 +134,27 @@ function holdersView() {
     return `<div class="row"><div class="main"><div class="name">${esc(p.name)} <span class="sub">${esc(p.dept)}</span></div><div class="sub">${ls.map(l => esc(tool(l.tool).name)).join('、')}</div></div><div>${late ? badge('overdue') + ' ' : ''}<b>${ls.length}点</b></div></div>`; }).join('');
   return `<div class="card"><h3>誰が何を持っているか</h3>${rows || '<p class="sub">持ち出し中の工具はありません。</p>'}</div>`;
 }
+const CATS = ['電動工具', '手工具', '測定器', '高所・安全用具', '機械類', 'その他'];
+let q = '', catF = '';
+function toolRows() {
+  const w = q.trim().toLowerCase();
+  const list = S.tools.filter(t => (!catF || t.cat === catF) && (!w || (t.name + ' ' + t.id).toLowerCase().includes(w)));
+  const rows = list.map(t => { const l = openLoan(t.id); return `<tr><td>${esc(t.id)}</td><td>${esc(t.name)}</td><td>${esc(t.cat)}</td><td>${badge(stateOf(t))}</td><td>${l ? esc(person(l.person).name) : '—'}</td></tr>`; }).join('');
+  return `<div class="sub" style="margin-bottom:6px">${list.length}点 / 全${S.tools.length}点</div><div class="scroll"><table><tr><th>番号</th><th>名前</th><th>区分</th><th>状態</th><th>持ち主</th></tr>${rows || '<tr><td colspan="5" class="sub">見つかりません</td></tr>'}</table></div>`;
+}
+function nextId() { return 'T' + String(S.tools.reduce((m, t) => Math.max(m, parseInt(t.id.slice(1), 10) || 0), 0) + 1).padStart(4, '0'); }
+const catOpts = sel => CATS.map(c => `<option ${c === sel ? 'selected' : ''}>${esc(c)}</option>`).join('');
 function toolsView() {
-  const rows = S.tools.map(t => { const l = openLoan(t.id); return `<tr><td>${esc(t.id)}</td><td>${esc(t.name)}</td><td>${esc(t.cat)}</td><td>${badge(stateOf(t))}</td><td>${l ? esc(person(l.person).name) : '—'}</td></tr>`; }).join('');
-  return `<div class="card"><h3>工具一覧（${S.tools.length}点）</h3><div class="scroll"><table><tr><th>番号</th><th>名前</th><th>区分</th><th>状態</th><th>持ち主</th></tr>${rows}</table></div></div>`;
+  return `<div class="card"><h3>工具を1点追加</h3>
+      <div class="two"><div><label>名前</label><input id="n-name" placeholder="例：インパクトドライバー"></div><div><label>区分</label><select id="n-cat">${catOpts('電動工具')}</select></div></div>
+      <button class="btn main small" style="margin-top:12px" data-act="addtool">追加する（番号は ${esc(nextId())} になります）</button></div>
+    <div class="card"><h3>まとめて登録（Excelから貼り付け）</h3>
+      <p class="sub">Excelで「名前」「区分」の2列を選んでコピーし、下に貼り付けてください。1行が1点です。区分は省いてもかまいません。</p>
+      <textarea id="bulk" rows="5" placeholder="インパクトドライバー	電動工具&#10;ノギス	測定器&#10;脚立（3m）	高所・安全用具"></textarea>
+      <button class="btn small" style="margin-top:10px" data-act="bulk">まとめて登録する</button></div>
+    <div class="card"><h3>工具一覧</h3>
+      <div class="two"><input id="q" placeholder="名前・番号で探す" value="${esc(q)}"><select id="catf"><option value="">すべての区分</option>${CATS.map(c => `<option ${c === catF ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></div>
+      <div id="tool-list" style="margin-top:10px">${toolRows()}</div></div>`;
 }
 function labelsView() {
   return `<div class="card"><h3>QRシール（印刷用）</h3><p class="sub">工具1個ずつに貼る、番号つきのQRシールです。本物では、選んだ工具をA4にまとめて印刷します。読むと、その工具の画面が開きます。</p></div><div class="labels">${S.tools.map(t => `<div class="label"><div class="qr" data-qr="${esc(t.id)}"></div><div class="id">${esc(t.id)}</div><div class="nm">${esc(t.name)}</div></div>`).join('')}</div>`;
@@ -186,7 +204,25 @@ document.addEventListener('click', e => {
     S.loans.push({ id: Date.now(), tool: cur, person: S.me, site, at: new Date().toISOString(), due: dueFor('today'), ret: null });
     view = 'mine'; commit('✓ 引き継ぎました：' + tool(cur).name);
   }
+  else if (a === 'addtool') {
+    const name = val('n-name').trim(); if (!name) { toast('名前を入れてください', false); return; }
+    snap(); const id = nextId(); S.tools.push({ id, name, cat: val('n-cat') || 'その他', status: 'ok' });
+    commit('✓ 追加しました：' + id + ' ' + name + '（QRシール画面で印刷できます）');
+  }
+  else if (a === 'bulk') {
+    const lines = val('bulk').split('\n').map(s => s.trim()).filter(Boolean).slice(0, 500);
+    if (!lines.length) { toast('貼り付ける内容がありません', false); return; }
+    snap(); let n = 0;
+    lines.forEach(line => { const [name, cat] = line.split(/[,\t]/).map(s => s.trim()); if (!name) return; S.tools.push({ id: nextId(), name, cat: CATS.includes(cat) ? cat : 'その他', status: 'ok' }); n++; });
+    commit('✓ ' + n + '点を登録しました');
+  }
   else if (a === 'undo') { if (undoSnap) { S = JSON.parse(undoSnap); undoSnap = null; save(); document.getElementById('toast').hidden = true; render(); } }
 });
-document.addEventListener('input', e => { if (e.target.id === 'f-site') form.site = e.target.value; });
+document.addEventListener('input', e => {
+  if (e.target.id === 'f-site') form.site = e.target.value;
+  if (e.target.id === 'q') { q = e.target.value; document.getElementById('tool-list').innerHTML = toolRows(); }
+});
+document.addEventListener('change', e => {
+  if (e.target.id === 'catf') { catF = e.target.value; document.getElementById('tool-list').innerHTML = toolRows(); }
+});
 render();
